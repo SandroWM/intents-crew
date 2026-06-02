@@ -264,8 +264,6 @@
   </div>
   <button class="ci-btn" onclick="startCheckin()">📍 Ich bin hier — Standort hinterlegen</button>
   <div class="maphint" id="mapHint"></div>
-  <label class="calrow"><input type="checkbox" id="calMode" onchange="renderMarkers()"> 📍 Positionen anpassen (Marker ziehen)</label>
-  <div id="calExport"></div>
 </main>
 
 <!-- ============ FAVORITEN ============ -->
@@ -295,10 +293,10 @@ const CONFIG = {
 };
 
 const PEOPLE = [
-  {id:'jaime',  name:'Jaime',  color:'#ff6b6b'},
-  {id:'robert', name:'Robert', color:'#4dabf7'},
   {id:'dennis', name:'Dennis', color:'#51cf66'},
+  {id:'jaime',  name:'Jaime',  color:'#ff6b6b'},
   {id:'lukas',  name:'Lukas',  color:'#cc5de8'},
+  {id:'robert', name:'Robert', color:'#4dabf7'},
   {id:'sandro', name:'Sandro', color:'#ffa94d'},
 ];
 const MEET_MIN = 3;   // Treffpunkt ab so vielen Leuten
@@ -699,12 +697,11 @@ function renderMap(){
 function setMapDay(day){ state.map.day=day; state.map.t=null; stopPlay(); renderMap(); }
 function onSlider(v){ state.map.t=+v; renderMarkers(); }
 function renderMarkers(){
-  const day=state.map.day, t=state.map.t||0, cal=document.getElementById('calMode').checked, pos=MAP_POS[day]||{};
+  const day=state.map.day, t=state.map.t||0, pos=MAP_POS[day]||{};
   document.getElementById('mapClock').textContent=fmtMin(t);
   let html='';
   Object.keys(pos).forEach(stage=>{
     const [x,y]=pos[stage];
-    if(cal){ html+=`<div class="marker cal" style="left:${x}%;top:${y}%" data-stage="${stage}"><div class="pin">${stage==='Campsite'?'🏕️ Camp':stage}</div></div>`; return; }
     const cur=setAt(day,stage,t), fp=cur?favPeople(cur.id):[];
     if(fp.length){
       const badges=fp.map(p=>`<div class="badge" style="background:${p.color}" title="${p.name}">${p.name[0]}</div>`).join('');
@@ -713,25 +710,20 @@ function renderMarkers(){
       html+=`<div class="marker" style="left:${x}%;top:${y}%" onclick="openMapPopup('${stage}')"><div class="pin">${stage==='Campsite'?'🏕️':'•'}</div></div>`;
     }
   });
-  if(!cal){
-    const groups={};
-    activeLocs(day).forEach(l=>{ const k=l.x+','+l.y; (groups[k]=groups[k]||[]).push(l); });
-    Object.keys(groups).forEach(k=>{
-      const ls=groups[k], xy=k.split(','), n=ls.length;
-      const r=[0,0,13,15,16,17][Math.min(n,5)]||17, ang=polyAngles(n);
-      const badges=ls.map((l,i)=>{ const p=personById(l.p); if(!p) return '';
-        const a=ang[i]*Math.PI/180, dx=(r*Math.cos(a)).toFixed(1), dy=(r*Math.sin(a)).toFixed(1);
-        return `<div class="lb" style="background:${p.color};transform:translate(-50%,-50%) translate(${dx}px,${dy}px)" onclick="openLocPopup('${l.p}')" title="${p.name}">${p.name[0]}</div>`;
-      }).join('');
-      html+=`<div class="marker loc" style="left:${xy[0]}%;top:${xy[1]}%"><div class="locpin"></div>${badges}</div>`;
-    });
-    if(state.checkin.placing) html+=`<div class="ci-overlay" onclick="placeAt(event)"><div class="ci-hint">📍 Tippe deinen Standort an</div></div>`;
-  }
+  const groups={};
+  activeLocs(day).forEach(l=>{ const k=l.x+','+l.y; (groups[k]=groups[k]||[]).push(l); });
+  Object.keys(groups).forEach(k=>{
+    const ls=groups[k], xy=k.split(','), n=ls.length;
+    const r=[0,0,13,15,16,17][Math.min(n,5)]||17, ang=polyAngles(n);
+    const badges=ls.map((l,i)=>{ const p=personById(l.p); if(!p) return '';
+      const a=ang[i]*Math.PI/180, dx=(r*Math.cos(a)).toFixed(1), dy=(r*Math.sin(a)).toFixed(1);
+      return `<div class="lb" style="background:${p.color};transform:translate(-50%,-50%) translate(${dx}px,${dy}px)" onclick="openLocPopup('${l.p}')" title="${p.name}">${p.name[0]}</div>`;
+    }).join('');
+    html+=`<div class="marker loc" style="left:${xy[0]}%;top:${xy[1]}%"><div class="locpin"></div>${badges}</div>`;
+  });
+  if(state.checkin.placing) html+=`<div class="ci-overlay" onclick="placeAt(event)"><div class="ci-hint">📍 Tippe deinen Standort an</div></div>`;
   document.getElementById('mapMarkers').innerHTML=html;
-  document.getElementById('mapHint').innerHTML = cal
-    ? 'Marker auf die richtige Stelle ziehen. Danach den Code unten kopieren und mir schicken — ich frier ihn für alle ein.'
-    : 'Regler = Zeit vorspulen. Farbige Kreise (Initiale) = wer den gerade laufenden Act favorisiert hat. Tipp auf eine Stage = Details.';
-  if(cal){ setupDrag(); showExport(); } else { document.getElementById('calExport').innerHTML=''; }
+  document.getElementById('mapHint').innerHTML = 'Regler = Zeit vorspulen. Farbige Kreise (Initiale) = wer den gerade laufenden Act favorisiert hat. Tipp auf eine Stage = Details.';
 }
 function openMapPopup(stage){
   const day=state.map.day, t=state.map.t||0, cur=setAt(day,stage,t), fp=cur?favPeople(cur.id):[];
