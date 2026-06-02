@@ -1,0 +1,778 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#0e0b1a">
+<title>Intents 2026 – Wer geht wohin?</title>
+<style>
+  :root{
+    --bg:#0e0b1a; --bg2:#15102b; --surface:#1b1638; --surface2:#241d4d;
+    --line:#322a5e; --text:#f3f0ff; --muted:#b0a6d8;
+    --accent:#23b6d6; --accent2:#7a5cff; --meet:#ffd43b;
+    --ppm:2.4px; --stagecol:96px;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent}
+  html,body{margin:0; background:var(--bg); color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  .app{max-width:720px; margin:0 auto; padding-bottom:160px; position:relative}
+  @media(min-width:720px){ body{background:#080611} .app{box-shadow:0 0 60px #0008} }
+
+  header{position:sticky; top:0; z-index:50; background:linear-gradient(180deg,#241a33,#15102bee);
+    backdrop-filter:blur(8px); border-bottom:1px solid var(--line); padding:9px 14px 8px}
+  .brand{display:flex; align-items:center; justify-content:center; gap:10px}
+  .brand img{height:30px; width:auto; display:block}
+  .brand .sub{font-weight:800; font-size:14px; letter-spacing:.2px; color:#fff}
+  .brand .sub small{display:block; font-weight:600; font-size:10.5px; color:var(--muted); letter-spacing:.3px}
+  .seg{display:flex; gap:4px; margin-top:9px; background:var(--surface); padding:4px; border-radius:12px}
+  .seg button{flex:1; border:0; padding:9px 6px; border-radius:9px; font-weight:700; font-size:13px;
+    background:transparent; color:var(--muted); cursor:pointer}
+  .seg button.on{background:linear-gradient(90deg,var(--accent),var(--accent2)); color:#fff}
+
+  .wrap{padding:11px 14px 0}
+  .days{display:flex; gap:6px; margin-bottom:9px}
+  .days button{flex:1; border:1px solid var(--line); background:var(--surface); color:var(--muted);
+    padding:8px 4px; border-radius:11px; font-weight:700; font-size:13px; cursor:pointer; line-height:1.2}
+  .days button small{display:block; font-weight:500; font-size:10px; opacity:.7}
+  .days button.on{border-color:transparent; background:linear-gradient(135deg,var(--accent),var(--accent2)); color:#fff}
+
+  .views{display:flex; gap:6px; margin-bottom:9px}
+  .views button{flex:1; border:1px solid var(--line); background:var(--surface); color:var(--muted);
+    padding:8px 4px; border-radius:10px; font-weight:700; font-size:12.5px; cursor:pointer}
+  .views button.on{background:var(--surface2); color:var(--text); border-color:var(--accent)}
+
+  .statusbar{display:flex; align-items:center; gap:8px; margin-bottom:9px; font-size:11.5px; color:var(--muted)}
+  .statusbar .pill{display:inline-flex; align-items:center; gap:6px; background:var(--surface); border:1px solid var(--line);
+    padding:4px 9px; border-radius:999px; font-weight:700}
+  .statusbar .pill b{font-weight:800}
+  .statusbar button{margin-left:auto; border:1px solid var(--accent); background:var(--surface2); color:var(--text);
+    padding:5px 11px; border-radius:999px; font-weight:700; font-size:12px; cursor:pointer}
+
+  .filters{display:flex; flex-wrap:wrap; gap:7px; margin-bottom:6px}
+  .chip{display:inline-flex; align-items:center; gap:6px; border:1px solid var(--line);
+    background:var(--surface); color:var(--text); padding:6px 11px 6px 8px; border-radius:999px;
+    font-size:13px; font-weight:600; cursor:pointer}
+  .chip .dot{width:11px; height:11px; border-radius:50%}
+  .chip.on{box-shadow:0 0 0 2px var(--c,_) inset; background:var(--surface2)}
+  .chip.allchip.on{box-shadow:0 0 0 2px var(--accent) inset}
+  .hint{color:var(--muted); font-size:11.5px; margin:2px 0 11px}
+
+  /* ---------- Raster (absolut positioniert, beliebige Zeiten) ---------- */
+  .gridscroll{overflow-x:auto; border:1px solid var(--line); border-radius:14px; background:var(--bg2)}
+  .grow{display:flex; align-items:stretch; border-top:1px solid var(--line)}
+  .grow.ghead{position:sticky; top:0; z-index:7; border-top:0; background:var(--bg2)}
+  .glabel{position:sticky; left:0; z-index:6; flex:0 0 var(--stagecol); width:var(--stagecol);
+    background:var(--surface); display:flex; align-items:center; padding:4px 8px; font-size:10.5px;
+    font-weight:800; line-height:1.12; border-right:1px solid var(--line)}
+  .ghead .glabel{background:var(--bg2); z-index:9}
+  .gtrack{position:relative; min-height:72px; flex:0 0 auto}
+  .ghead .gtrack{min-height:28px}
+  .gtick{position:absolute; top:0; height:100%; border-left:1px solid #ffffff14; padding-left:4px;
+    font-size:10px; color:var(--muted); font-weight:700}
+  .set{position:absolute; top:3px; bottom:3px; left:0; min-width:15px; border-radius:8px; padding:4px 6px;
+    background:var(--surface2); border:1px solid var(--line); overflow:hidden; cursor:pointer;
+    display:flex; flex-direction:column; gap:3px}
+  .set .nm{font-size:11px; font-weight:700; line-height:1.1; overflow:hidden;
+    display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical}
+  .set .tm{font-size:9px; color:var(--muted); font-weight:600}
+  .set.meet{border-color:var(--meet); box-shadow:0 0 0 1px var(--meet), 0 0 12px #ffd43b55; z-index:2}
+  .set.dim{opacity:.26}
+  .set .mb{position:absolute; top:2px; right:3px; font-size:10px}
+  .dots{display:flex; gap:2px; flex-wrap:wrap; margin-top:auto}
+  .dots i{width:9px; height:9px; border-radius:50%; border:1px solid #0006}
+
+  /* ---------- Liste ---------- */
+  .listday{display:flex; flex-direction:column; gap:8px}
+  .timegroup h4{margin:8px 2px 2px; font-size:12px; color:var(--muted); font-weight:800; letter-spacing:.5px}
+  .row{display:flex; align-items:center; gap:10px; background:var(--surface); border:1px solid var(--line);
+    border-radius:12px; padding:9px 12px; cursor:pointer}
+  .row.meet{border-color:var(--meet); box-shadow:0 0 12px #ffd43b22}
+  .row.dim{opacity:.3}
+  .row .tcol{min-width:70px; font-size:12px; font-weight:800; line-height:1.25}
+  .row .tcol small{display:block; font-weight:600; color:var(--muted); font-size:10.5px}
+  .row .mid{flex:1; min-width:0}
+  .row .dj{font-weight:700; font-size:14px; line-height:1.15}
+  .row .stg{font-size:11.5px; color:var(--muted); font-weight:600}
+  .badge{font-size:11px; color:var(--meet); font-weight:800; margin-left:4px; white-space:nowrap}
+
+  /* ---------- Treffpunkte ---------- */
+  .meetcard{background:var(--surface); border:1px solid var(--meet); border-radius:14px; padding:11px 14px; margin-bottom:9px;
+    box-shadow:0 0 16px #ffd43b18}
+  .meetcard .top{display:flex; justify-content:space-between; align-items:baseline; gap:8px}
+  .meetcard .dj{font-weight:800; font-size:15px; line-height:1.15}
+  .meetcard .when{font-size:12px; color:var(--muted); font-weight:700; white-space:nowrap}
+  .meetcard .who{display:flex; flex-wrap:wrap; gap:7px; margin-top:9px}
+  .who .ppl{display:inline-flex; align-items:center; gap:6px; font-size:12.5px; font-weight:700;
+    background:var(--surface2); border-radius:999px; padding:4px 10px 4px 7px}
+  .who .ppl i{width:11px; height:11px; border-radius:50%}
+  .emptyx{color:var(--muted); text-align:center; padding:38px 14px; font-size:14px; line-height:1.5}
+
+  /* ---------- Favoriten ---------- */
+  .me-pick{background:var(--surface); border:1px solid var(--line); border-radius:14px; padding:12px 14px; margin-bottom:11px}
+  .me-pick label{font-size:12px; color:var(--muted); font-weight:700; display:block; margin-bottom:8px}
+  .me-grid{display:flex; flex-wrap:wrap; gap:8px}
+  .me-grid button{border:1px solid var(--line); background:var(--surface2); color:var(--text);
+    padding:9px 14px; border-radius:999px; font-weight:800; font-size:14px; cursor:pointer;
+    display:inline-flex; align-items:center; gap:8px}
+  .me-grid button i{width:13px; height:13px; border-radius:50%}
+  .me-grid button.on{box-shadow:0 0 0 2px var(--c,_) inset; background:var(--bg2)}
+  .savebar{position:sticky; top:0; z-index:8; background:var(--bg); padding:8px 0 10px}
+  .savebar button{width:100%; border:0; border-radius:12px; padding:12px; font-weight:800; font-size:14px; cursor:pointer;
+    background:linear-gradient(90deg,var(--accent),var(--accent2)); color:#fff}
+  .savebar button.saved{background:var(--surface2); color:var(--muted)}
+  .favday{margin-bottom:8px}
+  .favday>summary{cursor:pointer; list-style:none; padding:11px 14px; background:var(--surface2);
+    border:1px solid var(--line); border-radius:12px; font-weight:800; font-size:14px; display:flex; justify-content:space-between}
+  .favday>summary::-webkit-details-marker{display:none}
+  .favstage{margin:9px 0 2px; font-size:11.5px; font-weight:800; color:var(--accent); letter-spacing:.3px; padding-left:4px}
+  .favitem{display:flex; align-items:center; gap:11px; padding:9px 8px; border-bottom:1px solid var(--line)}
+  .favitem:last-child{border-bottom:0}
+  .favitem .cb{width:24px; height:24px; border-radius:7px; border:2px solid var(--line); background:var(--bg2);
+    flex:0 0 auto; display:flex; align-items:center; justify-content:center; font-size:15px; color:#fff}
+  .favitem.checked .cb{background:linear-gradient(135deg,var(--accent),var(--accent2)); border-color:transparent}
+  .favitem .ft{flex:1; min-width:0}
+  .favitem .ft .d{font-weight:700; font-size:13.5px; line-height:1.15}
+  .favitem .ft .t{font-size:11px; color:var(--muted); font-weight:600}
+  .favitem .others{display:flex; gap:3px; flex-wrap:wrap; max-width:64px; justify-content:flex-end}
+  .favitem .others i{width:9px; height:9px; border-radius:50%}
+  .needpick{color:var(--muted); text-align:center; padding:28px 14px; font-size:14px}
+  /* Campsite */
+  .campgrid{display:flex; flex-wrap:wrap; gap:6px; padding:4px 2px 10px}
+  .campchip{position:relative; border:1px solid var(--line); background:var(--bg2); color:var(--muted);
+    border-radius:9px; padding:7px 9px 7px; font-size:12px; font-weight:800; cursor:pointer; min-width:54px; text-align:center}
+  .campchip.on{background:linear-gradient(135deg,var(--accent),var(--accent2)); color:#fff; border-color:transparent}
+  .campchip .cdots{display:flex; gap:2px; justify-content:center; margin-top:3px; min-height:7px}
+  .campchip .cdots i{width:6px; height:6px; border-radius:50%; border:1px solid #0004}
+  .set.campset{background:#16323f; border-color:#27566b}
+  .set.campset .tm{font-size:10px; color:#cfe9f2}
+  /* Karte */
+  .maptop{display:flex; align-items:center; gap:10px; margin:2px 0 8px}
+  .mapclock{font-size:24px; font-weight:800; color:var(--accent); min-width:92px; letter-spacing:.5px}
+  .mapclocklbl{margin-left:auto; text-align:right; font-size:11px; color:var(--muted); font-weight:700; line-height:1.3}
+  .mapclocklbl span{color:var(--accent)}
+  .mapslider{width:100%; margin:0 0 12px; accent-color:var(--accent2); height:26px}
+  .mapwrap{position:relative; border:1px solid var(--line); border-radius:14px; overflow:hidden; background:#0a0a14; touch-action:none}
+  .mapimg{display:block; width:100%; height:auto}
+  #mapMarkers{position:absolute; inset:0}
+  .marker{position:absolute; transform:translate(-50%,-50%); cursor:pointer; z-index:2}
+  .marker .pin{min-width:18px; height:18px; padding:0 3px; border-radius:9px; background:#ffffffd0; border:2px solid #0007;
+    box-shadow:0 1px 4px #000a; display:flex; align-items:center; justify-content:center; font-size:10px; font-weight:800; color:#1a1330}
+  .marker.cal .pin{background:linear-gradient(135deg,var(--accent),var(--accent2)); color:#fff; min-width:auto; padding:3px 7px; font-size:10.5px; white-space:nowrap}
+  .badges{display:flex; flex-wrap:wrap; gap:2px; justify-content:center; max-width:90px; filter:drop-shadow(0 1px 3px #000b)}
+  .badge{width:20px; height:20px; border-radius:50%; border:2px solid #fff; display:flex; align-items:center;
+    justify-content:center; font-size:11px; font-weight:800; color:#fff}
+  .maphint{color:var(--muted); font-size:11.5px; margin:9px 2px; line-height:1.5}
+  .calrow{display:flex; align-items:center; gap:8px; font-size:12.5px; color:var(--muted); margin:6px 2px; font-weight:600; cursor:pointer}
+  #calExport textarea{width:100%; height:64px; background:var(--bg2); color:var(--text); border:1px solid var(--line);
+    border-radius:8px; font-size:11px; padding:7px; margin-top:6px; font-family:monospace}
+  /* Live-Standort */
+  .ci-btn{width:100%; border:0; border-radius:12px; padding:12px; font-weight:800; font-size:14px; cursor:pointer;
+    background:linear-gradient(90deg,var(--accent),var(--accent2)); color:#fff; margin:2px 0 6px}
+  .marker.loc{z-index:5; transform:translate(-50%,-50%)}
+  .marker.loc .lb{position:absolute; left:50%; top:50%; width:20px; height:20px; border-radius:50%; border:2px solid #ff2d2d;
+    display:flex; align-items:center; justify-content:center; color:#fff; font-weight:800; font-size:11px; cursor:pointer; box-shadow:0 1px 3px #000a}
+  .locpin{position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); width:9px; height:9px; border-radius:50%;
+    background:#ff2d2d; animation:locpulse 1.5s infinite}
+  @keyframes locpulse{0%{box-shadow:0 0 0 0 #ff2d2dcc}70%{box-shadow:0 0 0 12px #ff2d2d00}100%{box-shadow:0 0 0 0 #ff2d2d00}}
+  .ci-overlay{position:absolute; inset:0; z-index:20; cursor:crosshair; background:#23b6d622}
+  .ci-hint{position:absolute; top:10px; left:50%; transform:translateX(-50%); white-space:nowrap;
+    background:#231b48; border:1px solid var(--accent); color:#fff; padding:7px 13px; border-radius:999px; font-size:12.5px; font-weight:700}
+  .ci-label{font-size:13px; color:var(--muted); margin-bottom:14px}
+  .ci-names{display:flex; flex-wrap:wrap; gap:7px; margin-bottom:6px}
+  .ci-names button{border:1px solid var(--line); background:var(--surface2); color:var(--text); padding:7px 11px;
+    border-radius:999px; font-weight:700; font-size:13px; cursor:pointer; display:inline-flex; align-items:center; gap:6px}
+  .ci-names button i{width:11px; height:11px; border-radius:50%}
+  .ci-names button.sel{box-shadow:0 0 0 2px var(--c) inset; background:var(--bg2)}
+  .ci-dur{display:flex; align-items:center; gap:16px; margin:4px 0 8px}
+  .ci-dur button{width:40px; height:40px; border-radius:50%; border:1px solid var(--accent); background:var(--surface2);
+    color:#fff; font-size:22px; font-weight:800; cursor:pointer; line-height:1}
+  .ci-dur span{font-size:17px; font-weight:800; min-width:84px; text-align:center}
+
+  .legend{display:flex; flex-wrap:wrap; gap:10px; margin:10px 2px 4px; font-size:12px; color:var(--muted)}
+  .legend span{display:inline-flex; align-items:center; gap:6px}
+  .legend i{width:11px; height:11px; border-radius:50%}
+  .toast{position:fixed; left:50%; bottom:22px; transform:translateX(-50%); z-index:99;
+    background:#231b48; border:1px solid var(--accent); color:#fff; padding:11px 16px; border-radius:12px;
+    font-size:13px; font-weight:700; max-width:90vw; box-shadow:0 8px 30px #0008; opacity:0; transition:.25s; pointer-events:none}
+  .toast.show{opacity:1; bottom:30px}
+
+  /* ---------- Event-Popup (tippen, v.a. mobil) ---------- */
+  .modal-backdrop{position:fixed; inset:0; background:#000b; z-index:200; display:flex; align-items:center; justify-content:center;
+    padding:22px; opacity:0; pointer-events:none; transition:.16s}
+  .modal-backdrop.show{opacity:1; pointer-events:auto}
+  .modal{position:relative; background:linear-gradient(180deg,#241a40,var(--surface)); border:1px solid var(--accent);
+    border-radius:18px; max-width:360px; width:100%; padding:20px 20px 22px; box-shadow:0 20px 60px #000a}
+  .modal .mclose{position:absolute; top:8px; right:12px; background:transparent; border:0; color:var(--muted);
+    font-size:22px; cursor:pointer; line-height:1}
+  .modal .mstage{font-size:12.5px; font-weight:700; color:var(--muted); margin-bottom:6px}
+  .modal .mdj{font-size:19px; font-weight:800; line-height:1.2; margin-bottom:8px; padding-right:20px}
+  .modal .mtime{font-size:13px; font-weight:700; color:var(--accent); margin-bottom:14px}
+  .modal .mwho-label{font-size:11.5px; font-weight:700; color:var(--muted); margin-bottom:7px; letter-spacing:.3px}
+  .modal .mwho{display:flex; flex-wrap:wrap; gap:7px}
+  .modal .mwho.none{color:var(--muted); font-size:13px; font-weight:600}
+  .modal .mwho .ppl{display:inline-flex; align-items:center; gap:6px; font-size:12.5px; font-weight:700;
+    background:var(--surface2); border-radius:999px; padding:4px 10px 4px 7px}
+  .modal .mwho .ppl i{width:11px; height:11px; border-radius:50%}
+  .mfav{margin-top:16px; width:100%; border:1px solid var(--line); border-radius:12px; padding:12px; font-weight:800;
+    font-size:14px; cursor:pointer; background:var(--surface2); color:var(--text)}
+  .mfav.on{background:linear-gradient(90deg,var(--accent),var(--accent2)); color:#fff; border-color:transparent}
+  .mfav-pick{margin-top:16px}
+  .mfav-pick>span{font-size:12px; color:var(--muted); font-weight:700; display:block; margin-bottom:8px}
+  .mepick-mini{display:flex; flex-wrap:wrap; gap:7px}
+  .mepick-mini button{border:1px solid var(--line); background:var(--surface2); color:var(--text); padding:7px 11px;
+    border-radius:999px; font-weight:700; font-size:13px; cursor:pointer; display:inline-flex; align-items:center; gap:6px}
+  .mepick-mini button i{width:11px; height:11px; border-radius:50%}
+</style>
+</head>
+<body>
+<div class="app">
+<header>
+  <div class="brand">
+    <img src="logo.png" alt="Intents">
+  </div>
+  <div class="seg">
+    <button id="nav-timetable" class="on" onclick="setPage('timetable')">Timetable</button>
+    <button id="nav-map" onclick="setPage('map')">🗺️ Karte</button>
+    <button id="nav-favorites" onclick="setPage('favorites')">★ Favoriten</button>
+  </div>
+</header>
+
+<!-- ============ TIMETABLE ============ -->
+<main id="page-timetable" class="wrap">
+  <div class="days" id="dayTabs"></div>
+  <div class="views">
+    <button id="v-grid" class="on" onclick="setView('grid')">▦ Raster</button>
+    <button id="v-meet" onclick="setView('meet')">★ Treffpunkte</button>
+  </div>
+  <div class="statusbar" id="statusbar"></div>
+  <div class="filters" id="filterChips"></div>
+  <div class="hint" id="filterHint"></div>
+  <div id="viewBox"></div>
+</main>
+
+<!-- ============ KARTE ============ -->
+<main id="page-map" class="wrap" style="display:none">
+  <div class="days" id="mapDayTabs"></div>
+  <div class="maptop">
+    <div class="mapclock" id="mapClock">–</div>
+    <div class="mapclocklbl">Regler = vorspulen<br><span>(ab jetzt)</span></div>
+  </div>
+  <input type="range" id="mapSlider" class="mapslider" oninput="onSlider(this.value)">
+  <div class="mapwrap" id="mapWrap">
+    <img class="mapimg" id="mapImg" alt="Festival-Karte">
+    <div id="mapMarkers"></div>
+  </div>
+  <button class="ci-btn" onclick="startCheckin()">📍 Ich bin hier — Standort hinterlegen</button>
+  <div class="maphint" id="mapHint"></div>
+  <label class="calrow"><input type="checkbox" id="calMode" onchange="renderMarkers()"> 📍 Positionen anpassen (Marker ziehen)</label>
+  <div id="calExport"></div>
+</main>
+
+<!-- ============ FAVORITEN ============ -->
+<main id="page-favorites" class="wrap" style="display:none">
+  <div class="me-pick">
+    <label>Wer bist du? Tippe deinen Namen, dann kreuz unten deine DJs an.</label>
+    <div class="me-grid" id="mePick"></div>
+  </div>
+  <div class="savebar" id="saveBar" style="display:none"></div>
+  <div id="favList"></div>
+</main>
+
+<div class="toast" id="toast"></div>
+<div class="modal-backdrop" id="modal" onclick="if(event.target===this)closeModal()">
+  <div class="modal" id="modalCard"></div>
+</div>
+</div>
+
+<script src="timetable.js"></script>
+<script>
+/* ============================ KONFIG ============================ */
+const CONFIG = {
+  // Nach dem Einrichten des Google-Sheets hier die Web-App-URL eintragen → dann LIVE für alle.
+  // Solange leer = lokaler Modus (Favoriten nur im eigenen Browser, Sandros Freitag ist vorbelegt).
+  SHEET_API: 'https://script.google.com/macros/s/AKfycbwEzep1-HHoZALXTXvkDXU--o51bSlaJfpYXPPpnJWek_lGm0BFNRDtRliYrssuOuwk/exec',
+  POLL_MS: 25000,
+};
+
+const PEOPLE = [
+  {id:'jaime',  name:'Jaime',  color:'#ff6b6b'},
+  {id:'robert', name:'Robert', color:'#4dabf7'},
+  {id:'dennis', name:'Dennis', color:'#51cf66'},
+  {id:'lukas',  name:'Lukas',  color:'#cc5de8'},
+  {id:'sandro', name:'Sandro', color:'#ffa94d'},
+];
+const MEET_MIN = 3;   // Treffpunkt ab so vielen Leuten
+
+/* ---- Karte: Hintergrundbild je Tag + Marker-Positionen [x%, y%] ---- */
+const MAP_IMG = { fri:'fri-map.jpg', sat:'satsun-map.jpg', sun:'satsun-map.jpg' };
+const MAP_POS = {
+  fri: { 'Mainstage':[59,53],'Fanaticz':[11,43],'Dynamite':[28.6,26],'Revive':[43.5,43],'Boombx':[20.4,28.5],'Campsite':[4.9,17.6] },
+  sat: { 'Mainstage':[59,53.3],'Indoor Mainstage':[74,75.1],'Dynamite':[11.5,43.9],'Fanaticz':[28,28.4],'Outrageous!':[44,43.9],'Energetic':[62,92.7],'Karnaval Festival Feestcafé':[51,93.8],'Boombox':[20,29.4],'Melodica':[53,83.4],'Campsite':[4.8,18.3] },
+  sun: { 'Mainstage':[59,53.3],'Indoor Mainstage':[74,75.1],'Dynamite':[11.5,43.9],'Fanaticz':[28,28.4],'Relive':[44,43.9],'Outrageous':[62,92.7],'Karnaval Festival Feestcafé':[51,93.8],'Boombox':[20,29.4],'Uiltje':[53,83.4],'Campsite':[4.3,19.4] },
+};
+
+/* Sandros Freitag-Favoriten (aus der Intents-App). [Stage, Startzeit] */
+const SANDRO_FRI = [
+  ['Revive','14:00'],['Fanaticz','14:45'],['Dynamite','15:00'],['Revive','15:45'],
+  ['Fanaticz','15:45'],['Dynamite','16:00'],['Mainstage','17:00'],['Mainstage','17:15'],
+  ['Fanaticz','17:30'],['Mainstage','18:15'],['Fanaticz','18:30'],['Dynamite','19:15'],
+  ['Mainstage','19:45'],['Dynamite','20:15'],['Fanaticz','20:30'],['Mainstage','21:00'],
+  ['Dynamite','21:15'],['Fanaticz','21:15'],['Fanaticz','21:45'],['Mainstage','22:00'],
+  ['Dynamite','22:00'],['Mainstage','22:30'],['Fanaticz','22:45'],['Mainstage','23:15'],
+];
+
+/* ============================ DATEN AUFBAUEN ============================ */
+const DAYS = INTENTS_TIMETABLE.days.map(d=>({id:d.id, label:d.label, date:d.date}));
+const toMin  = t => { let [h,m]=t.split(':').map(Number); if(h<8) h+=24; return h*60+m; };
+const fmtMin = m => String(Math.floor(m/60)%24).padStart(2,'0')+':'+String(m%60).padStart(2,'0');
+const hh = m => String(Math.floor((m/60)%24)).padStart(2,'0')+':00';
+
+const SETS = [];
+const DAY_STAGES = {};
+INTENTS_TIMETABLE.days.forEach(d=>{
+  DAY_STAGES[d.id] = Object.keys(d.stages);
+  Object.keys(d.stages).forEach(stage=>{
+    d.stages[stage].forEach(([start,end,dj])=>{
+      SETS.push({day:d.id, stage, dj, start, end, id:`${d.id}~${stage}~${start}`});
+    });
+  });
+});
+// Campsite: 15-Min-Blocks, 1:1 vom Festival-Start bis -Ende je Tag, als erste Stage
+INTENTS_TIMETABLE.days.forEach(d=>{
+  let lo=Infinity, hi=-Infinity;
+  SETS.filter(s=>s.day===d.id).forEach(s=>{ lo=Math.min(lo,toMin(s.start)); hi=Math.max(hi,toMin(s.end)); });
+  for(let m=lo; m<hi; m+=15){
+    const start=fmtMin(m);
+    SETS.push({day:d.id, stage:'Campsite', dj:'🏕️ Camping', start, end:fmtMin(m+15), id:`${d.id}~Campsite~${start}`, camp:true});
+  }
+  DAY_STAGES[d.id].unshift('Campsite');
+});
+
+const setsForDay = id => SETS.filter(s=>s.day===id);
+const stagesForDay = id => DAY_STAGES[id];
+const personById = id => PEOPLE.find(p=>p.id===id);
+// Anzeige-Reihenfolge: Campsite → Mainstage → Rest nach Favoriten (dann Anzahl Sets) absteigend
+function orderedStages(dayId){
+  const all=DAY_STAGES[dayId], ds=setsForDay(dayId);
+  const favScore=st=>ds.filter(s=>s.stage===st).reduce((n,s)=>n+favPeople(s.id).length,0);
+  const cnt=st=>ds.filter(s=>s.stage===st).length;
+  const rest=all.filter(st=>st!=='Campsite'&&st!=='Mainstage')
+    .sort((a,b)=> favScore(b)-favScore(a) || cnt(b)-cnt(a) || all.indexOf(a)-all.indexOf(b));
+  const out=[];
+  if(all.includes('Campsite')) out.push('Campsite');
+  if(all.includes('Mainstage')) out.push('Mainstage');
+  return out.concat(rest);
+}
+const esc = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+function favPeople(setId){ return PEOPLE.filter(p=>FAV[p.id].has(setId)); }
+
+/* ============================ STATE + PERSISTENZ ============================ */
+const FAV = {};
+let LOCS = [];   // Live-Standorte: [{p, day, x, y, since, until, label}]
+PEOPLE.forEach(p=> FAV[p.id]=new Set());
+FAV.sandro = new Set(SANDRO_FRI.map(([s,t])=>`fri~${s}~${t}`));
+const state = { page:'timetable', day:'fri', view:'grid', filter:null, me:null, dirty:false };
+
+function saveLocalCache(){ const o={}; PEOPLE.forEach(p=>o[p.id]=[...FAV[p.id]]);
+  try{ localStorage.setItem('intents26_fav', JSON.stringify(o)); }catch(e){} }
+function loadLocalCache(){ try{ const o=JSON.parse(localStorage.getItem('intents26_fav')||'null');
+  if(o) PEOPLE.forEach(p=>{ if(o[p.id]) FAV[p.id]=new Set(o[p.id]); }); }catch(e){} }
+
+/* ---------- Google Sheet: laden (JSONP, CORS-frei) ---------- */
+function cloudLoad(silent){
+  if(!CONFIG.SHEET_API) return;
+  const cb='__icb'+Date.now();
+  window[cb]=function(data){ applyCloud(data); cleanup(); if(!silent) toast('Aktualisiert ✓'); };
+  const s=document.createElement('script');
+  s.onerror=function(){ cleanup(); if(!silent) toast('Sheet nicht erreichbar'); };
+  s.src=CONFIG.SHEET_API+(CONFIG.SHEET_API.indexOf('?')>=0?'&':'?')+'callback='+cb+'&t='+Date.now();
+  function cleanup(){ try{delete window[cb];}catch(e){} s.remove(); }
+  document.body.appendChild(s);
+}
+function applyCloud(data){
+  if(!data || typeof data!=='object') return;
+  const favs = (data.favs && typeof data.favs==='object') ? data.favs : data; // neu {favs,locs} oder alt {person:[]}
+  PEOPLE.forEach(p=>{ if(Array.isArray(favs[p.id])) FAV[p.id]=new Set(favs[p.id]); });
+  if(Array.isArray(data.locs)) LOCS = data.locs;
+  saveLocalCache(); renderAll();
+}
+/* ---------- Google Sheet: speichern (POST, ohne Preflight) ---------- */
+let saveTimer;
+function cloudSaveDebounced(personId){
+  saveLocalCache(); markSaveBar(true);
+  if(!CONFIG.SHEET_API) return;
+  clearTimeout(saveTimer); saveTimer=setTimeout(()=>cloudSave(personId), 1200);
+}
+function cloudSave(personId){
+  if(!CONFIG.SHEET_API){ markSaveBar(false); return; }
+  fetch(CONFIG.SHEET_API,{ method:'POST', headers:{'Content-Type':'text/plain;charset=utf-8'},
+    body:JSON.stringify({p:personId, f:[...FAV[personId]]}) })
+    .then(()=>{ markSaveBar(false); toast('Für alle gespeichert ✓'); })
+    .catch(()=>{ markSaveBar(false); toast('Gespeichert (lokaler Cache)'); });
+}
+
+/* ============================ RENDER ============================ */
+function dotsHTML(people){ return `<div class="dots">${people.map(p=>`<i style="background:${p.color}" title="${p.name}"></i>`).join('')}</div>`; }
+function visible(setId){ if(!state.filter) return true; return FAV[state.filter].has(setId); }
+
+function renderStatus(){
+  const live = !!CONFIG.SHEET_API;
+  document.getElementById('statusbar').innerHTML =
+    `<span class="pill">${live?'🟢 <b>Live</b> (Google Sheet)':'🟡 <b>Lokaler Modus</b>'}</span>`+
+    (live?`<button onclick="cloudLoad(false)">🔄 Aktualisieren</button>`:'');
+}
+function renderDayTabs(){
+  document.getElementById('dayTabs').innerHTML = DAYS.map(d=>
+    `<button class="${d.id===state.day?'on':''}" onclick="setDay('${d.id}')">${d.label}<small>${d.date}</small></button>`).join('');
+}
+function renderFilters(){
+  let h=`<button class="chip allchip ${state.filter===null?'on':''}" onclick="setFilter(null)">Alle</button>`;
+  h+=PEOPLE.map(p=>`<button class="chip ${state.filter===p.id?'on':''}" style="--c:${p.color}" onclick="setFilter('${p.id}')">
+      <span class="dot" style="background:${p.color}"></span>${p.name}</button>`).join('');
+  document.getElementById('filterChips').innerHTML=h;
+  document.getElementById('filterHint').textContent = state.filter
+    ? `Nur Favoriten von ${personById(state.filter).name}. Nochmal tippen = Alle.`
+    : `Tipp auf einen Namen = nur dessen Favoriten. ★ = Treffpunkt (ab ${MEET_MIN} Leuten).`;
+}
+function renderView(){
+  const box=document.getElementById('viewBox');
+  box.innerHTML = state.view==='meet' ? renderMeet() : renderGrid();
+}
+function legendHTML(){
+  return `<div class="legend">${PEOPLE.map(p=>`<span><i style="background:${p.color}"></i>${p.name}</span>`).join('')}
+    <span><i style="background:var(--meet)"></i>★ Treffpunkt (≥${MEET_MIN})</span></div>`;
+}
+
+function renderGrid(){
+  const sets=setsForDay(state.day), stages=orderedStages(state.day);
+  let lo=Infinity,hi=-Infinity;
+  sets.forEach(s=>{ lo=Math.min(lo,toMin(s.start)); hi=Math.max(hi,toMin(s.end)); });
+  lo=Math.floor(lo/15)*15; hi=Math.ceil(hi/15)*15;
+  const PPM=2.4, trackW=(hi-lo)*PPM;
+  let ticks=''; for(let m=Math.ceil(lo/60)*60;m<=hi;m+=60){ ticks+=`<div class="gtick" style="left:${(m-lo)*PPM}px">${hh(m)}</div>`; }
+  let rows='';
+  stages.forEach(stage=>{
+    let blocks='';
+    sets.filter(s=>s.stage===stage).forEach(s=>{
+      const left=(toMin(s.start)-lo)*PPM, w=Math.max(15,(toMin(s.end)-toMin(s.start))*PPM);
+      const fp=favPeople(s.id), meet=fp.length>=MEET_MIN;
+      const cls=['set']; if(meet)cls.push('meet'); if(!visible(s.id))cls.push('dim'); if(s.camp)cls.push('campset');
+      const body = s.camp ? `<div class="tm">${s.start}</div>${dotsHTML(fp)}`
+                          : `<div class="nm">${esc(s.dj)}</div><div class="tm">${s.start}</div>${dotsHTML(fp)}`;
+      blocks+=`<div class="${cls.join(' ')}" style="left:${left}px;width:${w}px" title="${esc(s.camp?('Camping '+s.start+'–'+s.end):s.dj)}" onclick="openModal('${s.id}')">${meet?'<span class="mb">★</span>':''}${body}</div>`;
+    });
+    const glab = stage==='Campsite' ? '🏕️ Campsite' : esc(stage);
+    rows+=`<div class="grow"><div class="glabel">${glab}</div><div class="gtrack" style="width:${trackW}px">${blocks}</div></div>`;
+  });
+  return `<div class="gridscroll">
+      <div class="grow ghead"><div class="glabel"></div><div class="gtrack" style="width:${trackW}px">${ticks}</div></div>
+      ${rows}
+    </div>${legendHTML()}`;
+}
+
+function renderList(){
+  const sets=setsForDay(state.day).slice().sort((a,b)=>toMin(a.start)-toMin(b.start));
+  let html='<div class="listday">', last=null;
+  sets.forEach(s=>{
+    const hourLbl=hh(toMin(s.start));
+    if(hourLbl!==last){ html+=`<div class="timegroup"><h4>ab ${hourLbl}</h4></div>`; last=hourLbl; }
+    const fp=favPeople(s.id), meet=fp.length>=MEET_MIN;
+    const cls=['row']; if(meet)cls.push('meet'); if(!visible(s.id))cls.push('dim');
+    html+=`<div class="${cls.join(' ')}" onclick="openModal('${s.id}')">
+      <div class="tcol">${s.start}<small>bis ${s.end}</small></div>
+      <div class="mid"><div class="dj">${esc(s.dj)} ${meet?'<span class="badge">★ Treffpunkt</span>':''}</div>
+        <div class="stg">${esc(s.stage)}</div></div>
+      ${dotsHTML(fp)}</div>`;
+  });
+  return html+'</div>'+legendHTML();
+}
+
+function renderMeet(){
+  const list=setsForDay(state.day).map(s=>({s,fp:favPeople(s.id)}))
+    .filter(x=>x.fp.length>=MEET_MIN)
+    .filter(x=>!state.filter || x.fp.some(p=>p.id===state.filter))
+    .sort((a,b)=>toMin(a.s.start)-toMin(b.s.start));
+  if(!list.length) return `<div class="emptyx">Noch keine Treffpunkte an diesem Tag.<br>
+    Sobald sich <b>${MEET_MIN}+</b> von euch denselben Slot ankreuzen, taucht er hier auf. 🤝<br>
+    <span style="font-size:12px">(Aktuell sind erst Sandros Freitag-Favoriten eingetragen.)</span></div>`;
+  return list.map(({s,fp})=>`<div class="meetcard">
+    <div class="top"><div class="dj">${esc(s.dj)}</div><div class="when">${s.start}–${s.end}</div></div>
+    <div class="stg" style="color:var(--muted);font-size:12px;font-weight:700;margin-top:2px">📍 ${esc(s.stage)}</div>
+    <div class="who">${fp.map(p=>`<span class="ppl"><i style="background:${p.color}"></i>${p.name}</span>`).join('')}</div>
+  </div>`).join('');
+}
+
+/* ---------- Favoriten-Seite ---------- */
+function renderMePick(){
+  document.getElementById('mePick').innerHTML = PEOPLE.map(p=>
+    `<button class="${state.me===p.id?'on':''}" style="--c:${p.color}" onclick="setMe('${p.id}')">
+      <i style="background:${p.color}"></i>${p.name}</button>`).join('');
+}
+function markSaveBar(dirty){
+  state.dirty=dirty; const bar=document.getElementById('saveBar');
+  if(!state.me){ bar.style.display='none'; return; }
+  bar.style.display='';
+  const live=!!CONFIG.SHEET_API;
+  bar.innerHTML = `<button class="${dirty?'':'saved'}" onclick="cloudSave(state.me)">${
+    dirty ? (live?'💾 Jetzt für alle speichern':'💾 Speichern') : '✓ Gespeichert'}</button>`;
+}
+function renderFavList(){
+  const box=document.getElementById('favList');
+  if(!state.me){ box.innerHTML=`<div class="needpick">⬆️ Wähle oben zuerst deinen Namen.</div>`; markSaveBar(false); return; }
+  const me=state.me; let html='';
+  INTENTS_TIMETABLE.days.forEach((d,di)=>{
+    const cnt=setsForDay(d.id).filter(s=>FAV[me].has(s.id)).length;
+    html+=`<details class="favday" ${di===0?'open':''}><summary><span>${d.label} ${d.date}</span><span style="color:var(--muted)">${cnt} ★</span></summary>`;
+    orderedStages(d.id).forEach(stage=>{
+      const ss=setsForDay(d.id).filter(s=>s.stage===stage).sort((a,b)=>toMin(a.start)-toMin(b.start));
+      if(stage==='Campsite'){
+        html+=`<div class="favstage">🏕️ Campsite — wann bist du am Camping?</div><div class="campgrid">`;
+        ss.forEach(s=>{
+          const on=FAV[me].has(s.id);
+          const others=PEOPLE.filter(p=>p.id!==me && FAV[p.id].has(s.id));
+          html+=`<button class="campchip ${on?'on':''}" onclick="toggleFav('${s.id}')">${s.start}
+            <span class="cdots">${others.map(p=>`<i style="background:${p.color}"></i>`).join('')}</span></button>`;
+        });
+        html+=`</div>`; return;
+      }
+      html+=`<div class="favstage">${esc(stage)}</div>`;
+      ss.forEach(s=>{
+        const on=FAV[me].has(s.id);
+        const others=PEOPLE.filter(p=>p.id!==me && FAV[p.id].has(s.id));
+        html+=`<div class="favitem ${on?'checked':''}" onclick="toggleFav('${s.id}')">
+          <div class="cb">${on?'✓':''}</div>
+          <div class="ft"><div class="d">${esc(s.dj)}</div><div class="t">${s.start}–${s.end}</div></div>
+          <div class="others">${others.map(p=>`<i style="background:${p.color}" title="${p.name}"></i>`).join('')}</div>
+        </div>`;
+      });
+    });
+    html+=`</details>`;
+  });
+  box.innerHTML=html; markSaveBar(state.dirty);
+}
+
+function renderAll(){
+  renderStatus(); renderDayTabs(); renderFilters();
+  if(state.page==='timetable') renderView();
+  if(state.page==='map' && document.getElementById('mapImg').getAttribute('src')) renderMarkers();
+  renderMePick(); renderFavList();
+}
+
+/* ============================ AKTIONEN ============================ */
+function setPage(p){ state.page=p;
+  document.getElementById('page-timetable').style.display = p==='timetable'?'':'none';
+  document.getElementById('page-map').style.display = p==='map'?'':'none';
+  document.getElementById('page-favorites').style.display = p==='favorites'?'':'none';
+  document.getElementById('nav-timetable').classList.toggle('on',p==='timetable');
+  document.getElementById('nav-map').classList.toggle('on',p==='map');
+  document.getElementById('nav-favorites').classList.toggle('on',p==='favorites');
+  if(p!=='map') stopPlay();
+  if(p==='timetable') renderView();
+  if(p==='map') renderMap();
+  window.scrollTo(0,0);
+}
+function setDay(d){ state.day=d; renderDayTabs(); renderView(); }
+function setView(v){ state.view=v; ['grid','meet'].forEach(x=>document.getElementById('v-'+x).classList.toggle('on',x===v)); renderView(); }
+function setFilter(f){ state.filter=(state.filter===f?null:f); renderFilters(); renderView(); }
+function setMeGlobal(id){ state.me=id||null; try{ localStorage.setItem('intents26_me', id||''); }catch(e){} }
+function setMe(id){ setMeGlobal(state.me===id?null:id); state.dirty=false; renderMePick(); renderFavList(); }
+function toggleFav(setId){
+  if(!state.me){ toast('Bitte oben zuerst deinen Namen wählen'); return; }
+  const set=FAV[state.me]; set.has(setId)?set.delete(setId):set.add(setId);
+  cloudSaveDebounced(state.me); renderFavList();
+}
+let toastT;
+function toast(msg){ const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show');
+  clearTimeout(toastT); toastT=setTimeout(()=>t.classList.remove('show'),3000); }
+
+/* ---------- Event-Popup ---------- */
+function openModal(setId){
+  const s=SETS.find(x=>x.id===setId); if(!s) return;
+  const day=DAYS.find(d=>d.id===s.day), fp=favPeople(setId);
+  const who = fp.length
+    ? `<div class="mwho">${fp.map(p=>`<span class="ppl"><i style="background:${p.color}"></i>${p.name}</span>`).join('')}</div>`
+    : `<div class="mwho none">Noch niemand favorisiert</div>`;
+  let favCtrl;
+  if(state.me){ const on=FAV[state.me].has(setId);
+    favCtrl=`<button class="mfav ${on?'on':''}" onclick="toggleFavFromModal('${setId}')">${on?'✓ Dein Favorit — antippen zum Entfernen':'☆ Als meinen Favorit markieren'}</button>`;
+  } else {
+    favCtrl=`<div class="mfav-pick"><span>★ Als Favorit markieren — wer bist du?</span><div class="mepick-mini">${PEOPLE.map(p=>`<button style="--c:${p.color}" onclick="pickMeThenFav('${p.id}','${setId}')"><i style="background:${p.color}"></i>${p.name}</button>`).join('')}</div></div>`;
+  }
+  document.getElementById('modalCard').innerHTML =
+    `<button class="mclose" onclick="closeModal()" aria-label="Schließen">✕</button>
+     <div class="mstage">📍 ${esc(s.stage)}</div>
+     <div class="mdj">${esc(s.dj)}</div>
+     <div class="mtime">${day.label} ${day.date} · ${s.start}–${s.end}</div>
+     <div class="mwho-label">FAVORIT VON</div>${who}${favCtrl}`;
+  document.getElementById('modal').classList.add('show');
+}
+function toggleFavFromModal(setId){ const me=state.me; if(!me) return;
+  const set=FAV[me]; set.has(setId)?set.delete(setId):set.add(setId);
+  cloudSaveDebounced(me); openModal(setId);
+  if(state.page==='timetable') renderView(); renderFavList(); }
+function pickMeThenFav(pid,setId){ setMeGlobal(pid); FAV[pid].add(setId);
+  cloudSaveDebounced(pid); openModal(setId); renderMePick();
+  if(state.page==='timetable') renderView(); renderFavList(); }
+function closeModal(){ document.getElementById('modal').classList.remove('show'); }
+document.addEventListener('keydown', e=>{ if(e.key==='Escape') closeModal(); });
+
+/* ---------- Karte ---------- */
+state.map = { day:'fri', t:null, playing:false, timer:null };
+state.checkin = { placing:false, x:0, y:0, label:'', names:[], dur:30 };
+function activeLocs(day){ const now=Date.now(); return LOCS.filter(l=>l.day===day && Number(l.until)>now); }
+function clockOf(ms){ const d=new Date(Number(ms)); return String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0'); }
+function polyAngles(n){ // Winkel (Grad) für Cluster: 2 nebeneinander, 3 Dreieck, 4 Quadrat, 5 Pentagon
+  if(n<=1) return [0];
+  if(n===2) return [180,0];
+  if(n===3) return [-90,30,150];
+  if(n===4) return [-45,45,135,225];
+  if(n===5) return [-90,-18,54,126,198];
+  const a=[]; for(let i=0;i<n;i++) a.push(-90+i*360/n); return a;
+}
+function nearestStage(day,x,y){ const pos=MAP_POS[day]||{}; let best=null,bd=1e9;
+  Object.keys(pos).forEach(st=>{ const [sx,sy]=pos[st]; const d=Math.hypot(sx-x,sy-y); if(d<bd){bd=d; best=st;} });
+  return bd<=9 ? best : null; }
+/* Standort speichern (inkl. aktueller Favoriten, damit der alte Apps-Script-Stand die Favs nicht überschreibt) */
+function cloudSaveLoc(pid, loc){
+  LOCS = LOCS.filter(l=>l.p!==pid);
+  if(Number(loc.until)>Date.now()) LOCS.push({p:pid, day:loc.day, x:loc.x, y:loc.y, since:loc.since, until:loc.until, label:loc.label});
+  if(!CONFIG.SHEET_API) return;
+  fetch(CONFIG.SHEET_API,{ method:'POST', headers:{'Content-Type':'text/plain;charset=utf-8'},
+    body:JSON.stringify({p:pid, f:[...FAV[pid]], loc}) }).catch(()=>{});
+}
+function startCheckin(){ state.checkin.placing=true; renderMarkers(); toast('Tippe deinen Standort auf der Karte an'); }
+function placeAt(e){ const wrap=document.getElementById('mapWrap'), r=wrap.getBoundingClientRect();
+  const x=Math.round(((e.clientX-r.left)/r.width)*1000)/10, y=Math.round(((e.clientY-r.top)/r.height)*1000)/10;
+  state.checkin.placing=false; openCheckinPanel(x,y); }
+function openCheckinPanel(x,y){
+  state.checkin = { placing:false, x, y, label:(nearestStage(state.map.day,x,y)||''), names:(state.me?[state.me]:[]), dur:30 };
+  renderCheckinPanel();
+}
+function renderCheckinPanel(){
+  const ci=state.checkin;
+  const names=PEOPLE.map(p=>`<button class="${ci.names.includes(p.id)?'sel':''}" style="--c:${p.color}" onclick="toggleCiName('${p.id}')"><i style="background:${p.color}"></i>${p.name}</button>`).join('');
+  document.getElementById('modalCard').innerHTML =
+    `<button class="mclose" onclick="closeModal()">✕</button>
+     <div class="mstage">📍 Standort hinterlegen</div>
+     <div class="ci-label">bei: <b>${ci.label?esc(ci.label):'Freier Punkt'}</b></div>
+     <div class="mwho-label">WER IST HIER? (Mehrfachauswahl)</div>
+     <div class="ci-names">${names}</div>
+     <div class="mwho-label">WIE LANGE?</div>
+     <div class="ci-dur"><button onclick="ciDur(-5)">−</button><span>${ci.dur} Min</span><button onclick="ciDur(5)">+</button></div>
+     <button class="mfav on" onclick="confirmCheckin()">✓ Standort hinterlegen</button>`;
+  document.getElementById('modal').classList.add('show');
+}
+function toggleCiName(id){ const a=state.checkin.names, i=a.indexOf(id); i>=0?a.splice(i,1):a.push(id); renderCheckinPanel(); }
+function ciDur(d){ state.checkin.dur=Math.max(5, Math.min(300, state.checkin.dur+d)); renderCheckinPanel(); }
+function confirmCheckin(){
+  const ci=state.checkin; if(!ci.names.length){ toast('Bitte mindestens einen Namen wählen'); return; }
+  const now=Date.now(), until=now+ci.dur*60000;
+  ci.names.forEach(pid=> cloudSaveLoc(pid, {day:state.map.day, x:ci.x, y:ci.y, since:now, until, label:ci.label||''}));
+  toast(`📍 Standort für ${ci.dur} Min hinterlegt`); closeModal(); renderMarkers();
+}
+function openLocPopup(pid){
+  const l=activeLocs(state.map.day).find(x=>x.p===pid); if(!l) return; const p=personById(pid);
+  document.getElementById('modalCard').innerHTML =
+    `<button class="mclose" onclick="closeModal()">✕</button>
+     <div class="mstage">📍 ${l.label?esc(l.label):'Standort'}</div>
+     <div class="mdj"><span style="display:inline-flex;align-items:center;gap:9px"><i style="width:15px;height:15px;border-radius:50%;background:${p.color}"></i>${p.name} ist hier</span></div>
+     <div class="mtime">seit ${clockOf(l.since)} · bis ${clockOf(l.until)} Uhr</div>
+     <button class="mfav" onclick="closeModal()">OK</button>`;
+  document.getElementById('modal').classList.add('show');
+}
+function dayWindow(day){ let lo=Infinity,hi=-Infinity;
+  setsForDay(day).forEach(s=>{ lo=Math.min(lo,toMin(s.start)); hi=Math.max(hi,toMin(s.end)); }); return [lo,hi]; }
+function setAt(day,stage,t){ return SETS.find(s=>s.day===day && s.stage===stage && toMin(s.start)<=t && t<toMin(s.end)); }
+function renderMapDayTabs(){
+  document.getElementById('mapDayTabs').innerHTML = DAYS.map(d=>
+    `<button class="${d.id===state.map.day?'on':''}" onclick="setMapDay('${d.id}')">${d.label}<small>${d.date}</small></button>`).join('');
+}
+function renderMap(){
+  renderMapDayTabs();
+  const [lo,hi]=dayWindow(state.map.day), floor=liveFloor(state.map.day);
+  if(state.map.t==null || state.map.t<floor || state.map.t>hi) state.map.t=floor;
+  const sl=document.getElementById('mapSlider'); sl.min=floor; sl.max=hi; sl.step=15; sl.value=state.map.t;
+  const img=document.getElementById('mapImg'), want=MAP_IMG[state.map.day];
+  if(img.getAttribute('src')!==want) img.src=want;
+  renderMarkers();
+}
+function setMapDay(day){ state.map.day=day; state.map.t=null; stopPlay(); renderMap(); }
+function onSlider(v){ state.map.t=+v; renderMarkers(); }
+function renderMarkers(){
+  const day=state.map.day, t=state.map.t||0, cal=document.getElementById('calMode').checked, pos=MAP_POS[day]||{};
+  document.getElementById('mapClock').textContent=fmtMin(t);
+  let html='';
+  Object.keys(pos).forEach(stage=>{
+    const [x,y]=pos[stage];
+    if(cal){ html+=`<div class="marker cal" style="left:${x}%;top:${y}%" data-stage="${stage}"><div class="pin">${stage==='Campsite'?'🏕️ Camp':stage}</div></div>`; return; }
+    const cur=setAt(day,stage,t), fp=cur?favPeople(cur.id):[];
+    if(fp.length){
+      const badges=fp.map(p=>`<div class="badge" style="background:${p.color}" title="${p.name}">${p.name[0]}</div>`).join('');
+      html+=`<div class="marker has" style="left:${x}%;top:${y}%" onclick="openMapPopup('${stage}')"><div class="badges">${badges}</div></div>`;
+    } else {
+      html+=`<div class="marker" style="left:${x}%;top:${y}%" onclick="openMapPopup('${stage}')"><div class="pin">${stage==='Campsite'?'🏕️':'•'}</div></div>`;
+    }
+  });
+  if(!cal){
+    const groups={};
+    activeLocs(day).forEach(l=>{ const k=l.x+','+l.y; (groups[k]=groups[k]||[]).push(l); });
+    Object.keys(groups).forEach(k=>{
+      const ls=groups[k], xy=k.split(','), n=ls.length;
+      const r=[0,0,13,15,16,17][Math.min(n,5)]||17, ang=polyAngles(n);
+      const badges=ls.map((l,i)=>{ const p=personById(l.p); if(!p) return '';
+        const a=ang[i]*Math.PI/180, dx=(r*Math.cos(a)).toFixed(1), dy=(r*Math.sin(a)).toFixed(1);
+        return `<div class="lb" style="background:${p.color};transform:translate(-50%,-50%) translate(${dx}px,${dy}px)" onclick="openLocPopup('${l.p}')" title="${p.name}">${p.name[0]}</div>`;
+      }).join('');
+      html+=`<div class="marker loc" style="left:${xy[0]}%;top:${xy[1]}%"><div class="locpin"></div>${badges}</div>`;
+    });
+    if(state.checkin.placing) html+=`<div class="ci-overlay" onclick="placeAt(event)"><div class="ci-hint">📍 Tippe deinen Standort an</div></div>`;
+  }
+  document.getElementById('mapMarkers').innerHTML=html;
+  document.getElementById('mapHint').innerHTML = cal
+    ? 'Marker auf die richtige Stelle ziehen. Danach den Code unten kopieren und mir schicken — ich frier ihn für alle ein.'
+    : 'Regler = Zeit vorspulen. Farbige Kreise (Initiale) = wer den gerade laufenden Act favorisiert hat. Tipp auf eine Stage = Details.';
+  if(cal){ setupDrag(); showExport(); } else { document.getElementById('calExport').innerHTML=''; }
+}
+function openMapPopup(stage){
+  const day=state.map.day, t=state.map.t||0, cur=setAt(day,stage,t), fp=cur?favPeople(cur.id):[];
+  const who = fp.length ? `<div class="mwho">${fp.map(p=>`<span class="ppl"><i style="background:${p.color}"></i>${p.name}</span>`).join('')}</div>`
+                        : `<div class="mwho none">Niemand von euch (zu dieser Zeit)</div>`;
+  const setline = cur ? `<div class="mdj">${esc(cur.dj)}</div><div class="mtime">${cur.start}–${cur.end}</div>`
+                      : `<div class="mdj" style="color:var(--muted);font-size:15px">— gerade Pause —</div>`;
+  document.getElementById('modalCard').innerHTML =
+    `<button class="mclose" onclick="closeModal()">✕</button>
+     <div class="mstage">📍 ${esc(stage)} · ${fmtMin(t)} Uhr</div>${setline}
+     <div class="mwho-label">FAVORIT VON</div>${who}`;
+  document.getElementById('modal').classList.add('show');
+}
+function stopPlay(){ clearInterval(state.map.timer); }
+/* Untere Regler-Schranke: aktuelle Uhrzeit, wenn HEUTE dieser Festivaltag ist; sonst Tagesstart */
+const DAY_DATE = { fri:'2026-06-05', sat:'2026-06-06', sun:'2026-06-07' };
+function todayStr(){ const d=new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+function nowMin(){ const d=new Date(); let h=d.getHours(); if(h<8) h+=24; return h*60+d.getMinutes(); }
+function liveFloor(day){ const [lo,hi]=dayWindow(day);
+  if(todayStr()===DAY_DATE[day]) return Math.max(lo, Math.min(hi, nowMin()));
+  return lo; }
+function setupDrag(){
+  const wrap=document.getElementById('mapWrap');
+  wrap.querySelectorAll('.marker.cal').forEach(m=>{
+    m.onpointerdown=e=>{ e.preventDefault(); const stage=m.dataset.stage, rect=wrap.getBoundingClientRect();
+      const move=ev=>{ let x=((ev.clientX-rect.left)/rect.width)*100, y=((ev.clientY-rect.top)/rect.height)*100;
+        x=Math.max(0,Math.min(100,Math.round(x*10)/10)); y=Math.max(0,Math.min(100,Math.round(y*10)/10));
+        MAP_POS[state.map.day][stage]=[x,y]; m.style.left=x+'%'; m.style.top=y+'%'; showExport(); };
+      const up=()=>{ document.removeEventListener('pointermove',move); document.removeEventListener('pointerup',up); };
+      document.addEventListener('pointermove',move); document.addEventListener('pointerup',up);
+    };
+  });
+}
+function showExport(){ document.getElementById('calExport').innerHTML =
+  `<textarea readonly onclick="this.select()">"${state.map.day}": ${JSON.stringify(MAP_POS[state.map.day])},</textarea>`; }
+
+/* ============================ INIT ============================ */
+loadLocalCache();
+try{ const m=localStorage.getItem('intents26_me'); if(m) state.me=m; }catch(e){}
+if(CONFIG.SHEET_API){ cloudLoad(true); setInterval(()=>cloudLoad(true), CONFIG.POLL_MS); }
+renderAll();
+</script>
+</body>
+</html>
