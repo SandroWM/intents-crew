@@ -387,9 +387,15 @@ function cloudLoad(silent){
   function cleanup(){ try{delete window[cb];}catch(e){} s.remove(); }
   document.body.appendChild(s);
 }
+let _lastCloudSig=null;
 function applyCloud(data){
   if(!data || typeof data!=='object') return;
   const favs = (data.favs && typeof data.favs==='object') ? data.favs : data; // neu {favs,locs} oder alt {person:[]}
+  // Hat sich seit dem letzten Poll wirklich etwas geändert? Falls nicht: kein Re-Render
+  // (sonst würde der 25-s-Poll den horizontalen Scroll im Raster zurücksetzen).
+  const sig = JSON.stringify({favs, locs:Array.isArray(data.locs)?data.locs:null});
+  if(sig===_lastCloudSig) return;
+  _lastCloudSig = sig;
   PEOPLE.forEach(p=>{ if(Array.isArray(favs[p.id])) FAV[p.id]=new Set(favs[p.id]); });
   if(Array.isArray(data.locs)) LOCS = data.locs;
   saveLocalCache(); renderAll();
@@ -434,7 +440,12 @@ function renderFilters(){
 }
 function renderView(){
   const box=document.getElementById('viewBox');
+  // Horizontale Scroll-Position des Rasters über den Re-Render hinweg merken,
+  // damit ein Neuaufbau (Poll, Favoriten-Änderung) nicht nach ganz links zurückspringt.
+  const prev=box.querySelector('.gridscroll');
+  const sx=prev?prev.scrollLeft:0;
   box.innerHTML = state.view==='meet' ? renderMeet() : renderGrid();
+  if(state.view==='grid' && sx){ const gs=box.querySelector('.gridscroll'); if(gs) gs.scrollLeft=sx; }
 }
 function legendHTML(){
   return `<div class="legend">${PEOPLE.map(p=>`<span><i style="background:${p.color}"></i>${p.name}</span>`).join('')}
