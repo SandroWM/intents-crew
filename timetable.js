@@ -275,7 +275,8 @@ window.INTENTS_TIMETABLE = {
           ['18:45','19:45','The Dark Horror vs Dimitri K vs Partyraiser'],
           ['19:45','20:15','Noxiouz vs Radical Redemption LIVE'],
           ['20:15','20:45','Revealer - The Anger In Us'],
-          ['20:45','22:15','The Dark Horror vs Noxiouz vs Bombsquad'],
+          ['20:45','21:15','Guizcore (Album Showcase)'],
+          ['21:15','22:15','The Dark Horror vs Noxiouz vs Bombsquad'],
           ['22:15','22:45','Noiseflow'],
         ],
         'Fanaticz': [
