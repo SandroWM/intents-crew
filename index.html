@@ -58,7 +58,16 @@
   .hint{color:var(--muted); font-size:11.5px; margin:2px 0 11px}
 
   /* ---------- Raster (absolut positioniert, beliebige Zeiten) ---------- */
-  .gridscroll{overflow-x:auto; border:1px solid var(--line); border-radius:14px; background:var(--bg2)}
+  .gridscroll{position:relative; overflow-x:auto; border:1px solid var(--line); border-radius:14px; background:var(--bg2)}
+
+  /* ---------- Now-Linie (aktuelle Uhrzeit, nur am heutigen Tag) ---------- */
+  .nowline{position:absolute; top:0; bottom:0; width:2px; z-index:4; pointer-events:none;
+    background:#ff3b6b; box-shadow:0 0 8px #ff3b6baa; display:none}
+  .nowline .nowtag{position:absolute; top:31px; left:0; transform:translateX(-50%);
+    background:#ff3b6b; color:#fff; font-size:10px; font-weight:800; padding:2px 7px; border-radius:999px;
+    white-space:nowrap; box-shadow:0 1px 4px #0007; letter-spacing:.2px}
+  .nowline .nowtag::before{content:''; position:absolute; top:-4px; left:50%; transform:translateX(-50%);
+    border-left:4px solid transparent; border-right:4px solid transparent; border-bottom:4px solid #ff3b6b}
   .grow{display:flex; align-items:stretch; border-top:1px solid var(--line)}
   .grow.ghead{position:sticky; top:0; z-index:7; border-top:0; background:var(--bg2)}
   .glabel{position:sticky; left:0; z-index:6; flex:0 0 var(--stagecol); width:var(--stagecol);
@@ -369,7 +378,7 @@ const FAV = {};
 let LOCS = [];   // Live-Standorte: [{p, day, x, y, since, until, label}]
 PEOPLE.forEach(p=> FAV[p.id]=new Set());
 FAV.sandro = new Set(SANDRO_FRI.map(([s,t])=>`fri~${s}~${t}`));
-const state = { page:'timetable', day:'fri', view:'grid', filter:null, me:null, dirty:false };
+const state = { page:'timetable', day:'fri', view:'grid', filter:null, me:null, dirty:false, grid:null };
 
 function saveLocalCache(){ const o={}; PEOPLE.forEach(p=>o[p.id]=[...FAV[p.id]]);
   try{ localStorage.setItem('intents26_fav', JSON.stringify(o)); }catch(e){} }
@@ -446,6 +455,7 @@ function renderView(){
   const sx=prev?prev.scrollLeft:0;
   box.innerHTML = state.view==='meet' ? renderMeet() : renderGrid();
   if(state.view==='grid' && sx){ const gs=box.querySelector('.gridscroll'); if(gs) gs.scrollLeft=sx; }
+  if(state.view==='grid') updateNowLine();
 }
 function legendHTML(){
   return `<div class="legend">${PEOPLE.map(p=>`<span><i style="background:${p.color}"></i>${p.name}</span>`).join('')}
@@ -458,6 +468,7 @@ function renderGrid(){
   sets.forEach(s=>{ lo=Math.min(lo,toMin(s.start)); hi=Math.max(hi,toMin(s.end)); });
   lo=Math.floor(lo/15)*15; hi=Math.ceil(hi/15)*15;
   const PPM=2.4, trackW=(hi-lo)*PPM;
+  state.grid={lo, hi, ppm:PPM, day:state.day};  // für updateNowLine() (Now-Linie, ohne Re-Render)
   let ticks=''; for(let m=Math.ceil(lo/60)*60;m<=hi;m+=60){ ticks+=`<div class="gtick" style="left:${(m-lo)*PPM}px">${hh(m)}</div>`; }
   let rows='';
   stages.forEach(stage=>{
@@ -476,6 +487,7 @@ function renderGrid(){
   return `<div class="gridscroll">
       <div class="grow ghead"><div class="glabel"></div><div class="gtrack" style="width:${trackW}px">${ticks}</div></div>
       ${rows}
+      <div class="nowline" id="nowLine"><div class="nowtag" id="nowTag"></div></div>
     </div>${legendHTML()}`;
 }
 
@@ -756,6 +768,19 @@ function nowMin(){ const d=new Date(); let h=d.getHours(); if(h<8) h+=24; return
 function liveFloor(day){ const [lo,hi]=dayWindow(day);
   if(todayStr()===DAY_DATE[day]) return Math.max(lo, Math.min(hi, nowMin()));
   return lo; }
+/* Now-Linie im Raster: nur am heutigen Festivaltag und innerhalb der Festival-Zeiten.
+   Aktualisiert nur left/display am bestehenden Element -> KEIN Re-Render (Scroll bleibt). */
+const STAGECOL = 96;   // muss --stagecol in :root entsprechen
+function updateNowLine(){
+  const el=document.getElementById('nowLine'); if(!el) return;   // Raster nicht sichtbar
+  const g=state.grid;
+  if(!g || todayStr()!==DAY_DATE[g.day]){ el.style.display='none'; return; }
+  const now=nowMin();
+  if(now<g.lo || now>g.hi){ el.style.display='none'; return; }   // vor Beginn / nach Ende: ausblenden
+  el.style.left=(STAGECOL+(now-g.lo)*g.ppm)+'px';
+  el.style.display='block';
+  const tag=document.getElementById('nowTag'); if(tag) tag.textContent='● '+fmtMin(now);
+}
 function setupDrag(){
   const wrap=document.getElementById('mapWrap');
   wrap.querySelectorAll('.marker.cal').forEach(m=>{
@@ -776,6 +801,7 @@ loadLocalCache();
 try{ const m=localStorage.getItem('intents26_me'); if(m) state.me=m; }catch(e){}
 if(CONFIG.SHEET_API){ cloudLoad(true); setInterval(()=>cloudLoad(true), CONFIG.POLL_MS); }
 renderAll();
+setInterval(updateNowLine, 30000);   // Now-Linie alle 30 s nachführen (ohne Raster-Re-Render)
 </script>
 </body>
 </html>
