@@ -589,7 +589,7 @@ function setPage(p){ state.page=p;
   document.getElementById('nav-favorites').classList.toggle('on',p==='favorites');
   if(p!=='map') stopPlay();
   if(p==='timetable') renderView();
-  if(p==='map') renderMap();
+  if(p==='map'){ state.map.day=liveDay(); state.map.t=null; renderMap(); }
   window.scrollTo(0,0);
 }
 function setDay(d){ state.day=d; renderDayTabs(); renderView(); }
@@ -768,6 +768,9 @@ function nowMin(){ const d=new Date(); let h=d.getHours(); if(h<8) h+=24; return
 function liveFloor(day){ const [lo,hi]=dayWindow(day);
   if(todayStr()===DAY_DATE[day]) return Math.max(lo, Math.min(hi, nowMin()));
   return lo; }
+/* Heutiger Festivaltag (damit die Karte beim Öffnen den gerade laufenden Act zeigt);
+   ausserhalb des Festivals der erste Tag. */
+function liveDay(){ const t=todayStr(); const d=DAYS.find(d=>DAY_DATE[d.id]===t); return d?d.id:DAYS[0].id; }
 /* Now-Linie im Raster: nur am heutigen Festivaltag und innerhalb der Festival-Zeiten.
    Aktualisiert nur left/display am bestehenden Element -> KEIN Re-Render (Scroll bleibt). */
 const STAGECOL = 96;   // muss --stagecol in :root entsprechen
